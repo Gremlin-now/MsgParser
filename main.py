@@ -1,8 +1,12 @@
-from pyrogram import Client, filters
+import asyncio
+
+from pyrogram import Client, filters, idle
 import string
 
+api_id = 23441485
+api_hash = "c98781089b20df19e88a8cdf2e0d8f6b"
 
-parser = Client(name="UsParser")
+parser = Client(name="UsParser", api_id=api_id, api_hash=api_hash)
 
 bot_api_id = 28521388
 bot_api_hash = "2584676d9fd234256457b0f82854484f"
@@ -14,6 +18,13 @@ targets = ["peepoSwamp"]
 archive_msgs = []
 
 
+async def get_all_history():
+    for target in targets:
+        async for msg in parser.get_chat_history(chat_id=target):
+            archive_msgs.append(msg)
+    print(len(archive_msgs))
+
+
 async def searcher(user_msg):
     array_of_pairs = []
     table = str.maketrans("", "", string.punctuation)
@@ -21,10 +32,10 @@ async def searcher(user_msg):
     for msg_from_history in archive_msgs:
         if msg_from_history.text is not None:
             words_array_msg_from_archive_msgs = (msg_from_history
-                                            .text
-                                            .lower()
-                                            .translate(table)
-                                            .split())
+                                                 .text
+                                                 .lower()
+                                                 .translate(table)
+                                                 .split())
         else:
             if msg_from_history.caption is not None:
                 words_array_msg_from_archive_msgs = (msg_from_history
@@ -39,12 +50,16 @@ async def searcher(user_msg):
             array_of_pairs.append([len(tmp), msg_from_history])
     return sorted(array_of_pairs, key=lambda x: x[0], reverse=True)
 
+
 async def main():
-    async with parser:
-        for target in targets:
-            async for msg in parser.get_chat_history(chat_id=target):
-                archive_msgs.append(msg)
-    print(len(archive_msgs))
+    clients = [parser, app]
+    for client in clients:
+        await client.start()
+    await get_all_history()
+    await idle()
+    for client in clients:
+        await client.stop()
+
 
 @app.on_message(filters.text)
 async def display_suitable_msgs(client, msg):
@@ -55,11 +70,11 @@ async def display_suitable_msgs(client, msg):
         except:
             print(i[1])
 
-@parser.on_message(filters.chat(targets))
+
+@parser.on_message(filters.chat(chats=targets))
 async def add_in_archive_new_msgs(client, msg):
     archive_msgs.append(msg)
     print(len(archive_msgs))
 
-parser.run(main())
-parser.run()
-app.run()
+if __name__ == '__main__':
+    asyncio.run(main())
